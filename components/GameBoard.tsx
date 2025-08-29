@@ -95,8 +95,20 @@ export default function GameBoard({ player }: { player: string }) {
     if(!game || state!=='playing') return
     const k=key(r,c); if(revealed.has(k) || flags.has(k)) return
     const t=Date.now()
-    setMoves(m=>{ const next=[...m,{r,c,a:'reveal',t}]; if(next.length%10===0) setTimeout(()=>progress(),0); return next })
-    if (layout[r*game.w+c]){ setState('lose'); setRevealed(new Set([...revealed,k])); finish('lose', [...moves,{r,c,a:'reveal',t}]); return }
+    setMoves((m: Move[]): Move[] => {
+  const next: Move[] = [...m, { r, c, a: 'reveal' as const, t }]
+  if (next.length % 10 === 0) setTimeout(() => progress(), 0)
+  return next
+})
+
+if (layout[r * game.w + c]) {
+  setState('lose')
+  setRevealed(new Set([...revealed, k]))
+  const mv: Move[] = [...moves, { r, c, a: 'reveal' as const, t }]
+  finish('lose', mv)
+  return
+}
+
     const stack:[[number,number]]|[number,number][]= [[r,c]]; const newRev=new Set(revealed)
     while(stack.length){
       const [rr,cc]=stack.pop()!; const kk=key(rr,cc); if(newRev.has(kk)) continue
@@ -109,18 +121,31 @@ export default function GameBoard({ player }: { player: string }) {
     }
     setRevealed(newRev)
     const safeCells=game.w*game.h - game.mines
-    if(newRev.size>=safeCells){ setState('win'); finish('win', [...moves,{r,c,a:'reveal',t}]) }
-  }
+    if (newRev.size >= safeCells) {
+  setState('win')
+  const mv: Move[] = [...moves, { r, c, a: 'reveal' as const, t }]
+  finish('win', mv)
+}
 
   function onRightClick(e:React.MouseEvent,r:number,c:number){
     e.preventDefault(); if(!game || state!=='playing') return
     const k=key(r,c); const t=Date.now()
     if(flags.has(k)){
       const n=new Set(flags); n.delete(k); setFlags(n)
-      setMoves(m=>{ const next=[...m,{r,c,a:'unflag',t}]; if(next.length%10===0) setTimeout(()=>progress(),0); return next })
+      setMoves((m: Move[]): Move[] => {
+  const next: Move[] = [...m, { r, c, a: 'unflag' as const, t }]
+  if (next.length % 10 === 0) setTimeout(() => progress(), 0)
+  return next
+})
+
     }else if(!revealed.has(k)){
       const n=new Set(flags); n.add(k); setFlags(n)
-      setMoves(m=>{ const next=[...m,{r,c,a:'flag',t}]; if(next.length%10===0) setTimeout(()=>progress(),0); return next })
+      setMoves((m: Move[]): Move[] => {
+  const next: Move[] = [...m, { r, c, a: 'flag' as const, t }]
+  if (next.length % 10 === 0) setTimeout(() => progress(), 0)
+  return next
+})
+
     }
   }
 
