@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { computeScore } from '../lib/score'
 import { generateLayout, computeNumbers } from '../lib/board'
 
@@ -33,6 +33,18 @@ export default function GameBoard({ player }: { player: string }) {
 
   // Last status (progress/finish)
   const [lastStatus, setLastStatus] = useState<{ when: string, msg: string } | null>(null)
+
+  // Auto-refresh leaderboard function
+  const refreshLeaderboard = useCallback(async () => {
+    try {
+      console.log('🔄 Auto-refreshing leaderboard...')
+      const response = await fetch('/api/leaderboard/minesweeper')
+      const result = await response.json()
+      console.log('✅ Leaderboard refreshed:', result)
+    } catch (error) {
+      console.error('❌ Error refreshing leaderboard:', error)
+    }
+  }, [])
 
   useEffect(() => {
     try {
@@ -75,7 +87,7 @@ export default function GameBoard({ player }: { player: string }) {
     } else if (!game) setCurrentScore(0)
   }, [state, game, startedAt, moves.length, revealed.size, duration])
 
-  async function start() {
+  const start = useCallback(async () => {
     if (!player) { alert('Cần địa chỉ ví để chơi.'); return }
     const res = await fetch('/api/new-board', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ difficulty, player }) })
     const data = await res.json()
@@ -86,7 +98,14 @@ export default function GameBoard({ player }: { player: string }) {
     setGame(data as StartResp)
     setRevealed(new Set()); setFlags(new Set()); setMoves([]); setDuration(0)
     setState('playing'); setStartedAt(Date.now()); setLastStatus(null); setCurrentScore(0)
-  }
+  }, [player, difficulty])
+
+  // Tự động start game khi có player và chưa có game
+  useEffect(() => {
+    if (player && !game && state === 'idle') {
+      start()
+    }
+  }, [player, game, state, start])
 
   function neighbors(r: number, c: number) {
     const acc: [number, number][] = []; if (!game) return acc
@@ -211,7 +230,13 @@ export default function GameBoard({ player }: { player: string }) {
         <div className="chip" data-high-score={currentScore > bestScore && bestScore > 0}>
           <span>Score</span> <b>{fmt(currentScore)}</b>
         </div>
-        <a className="chip ghost" href="/leaderboard">Leaderboard</a>
+        <a 
+          className="chip ghost" 
+          href="/leaderboard"
+          onClick={refreshLeaderboard}
+        >
+          Leaderboard
+        </a>
         <div className="chip"><span>Best</span> <b>{fmt(bestScore)}</b></div>
       </div>
 
@@ -245,7 +270,7 @@ export default function GameBoard({ player }: { player: string }) {
                     onClick={() => onReveal(r, c)}
                     onContextMenu={(e) => onRightClick(e, r, c)}
                   >
-                    {isRevealed ? (isMine ? '💣' : (n > 0 ? n : '')) : (isFlag ? '🚩' : '')}
+                    {isRevealed ? (isMine ? <span className="icon-bomb"></span> : (n > 0 ? n : '')) : (isFlag ? <span className="icon-flag"></span> : '')}
                   </div>
                 )
               })
@@ -256,7 +281,9 @@ export default function GameBoard({ player }: { player: string }) {
 
       {/* Buttons */}
       <div className="card-actions">
-        <button className="btn" onClick={start} disabled={!player}>{state === 'playing' ? 'New Game' : 'New Game'}</button>
+        <button className="btn" onClick={start} disabled={!player}>
+          {state === 'playing' ? 'New Game' : 'Start Game'}
+        </button>
         <button className="btn ghost" onClick={progress} disabled={!player || state !== 'playing'}>Save Score</button>
       </div>
 

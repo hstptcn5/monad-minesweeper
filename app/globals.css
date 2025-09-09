@@ -135,7 +135,7 @@ html,body{
   border-radius:12px;
   display:grid; place-items:center;
   font-weight:800; user-select:none; cursor:pointer;
-  font-size:clamp(12px, 0.85rem, 18px);
+  font-size:clamp(16px, 1rem, 22px);
   box-shadow: inset 0 -4px 0 rgba(0,0,0,.08);
   transition: var(--transition-fast);
   position: relative;
@@ -200,6 +200,97 @@ html,body{
 @keyframes revealPop {
   0% { transform: scale(1.2); opacity: 0.5; }
   100% { transform: scale(0.95); opacity: 1; }
+}
+
+/* Custom Icons */
+.cell-icon {
+  font-size: 0.8em;
+  display: inline-block;
+  line-height: 1;
+}
+
+.cell-icon.flag {
+  color: var(--accent-red);
+  font-weight: 900;
+}
+
+.cell-icon.bomb {
+  color: var(--accent-red);
+  font-weight: 900;
+  animation: bombPulse 0.5s ease-in-out;
+}
+
+@keyframes bombPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* CSS Icons - Đẹp hơn */
+.icon-flag {
+  width: 14px;
+  height: 14px;
+  background: var(--accent-red);
+  position: relative;
+  display: inline-block;
+  border-radius: 2px;
+}
+
+.icon-flag::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid var(--accent-red);
+  border-top: 3px solid transparent;
+  border-bottom: 3px solid transparent;
+}
+
+.icon-flag::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 8px;
+  height: 2px;
+  background: var(--accent-red);
+  border-radius: 1px;
+}
+
+.icon-bomb {
+  width: 16px;
+  height: 16px;
+  background: var(--accent-red);
+  border-radius: 50%;
+  position: relative;
+  display: inline-block;
+  animation: bombPulse 0.5s ease-in-out;
+}
+
+.icon-bomb::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 4px;
+  background: var(--accent-red);
+  border-radius: 1px;
+}
+
+.icon-bomb::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6px;
+  height: 2px;
+  background: var(--accent-red);
+  border-radius: 1px;
 }
 
 .card-actions{
