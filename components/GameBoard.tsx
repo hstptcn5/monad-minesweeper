@@ -203,11 +203,14 @@ export default function GameBoard({ player }: { player: string }) {
     <section
       className="game-card"
       data-diff={difficulty}
+      data-state={state}
       style={{ ['--cols' as any]: String(game?.w ?? 9) }}
     >
       {/* Card header */}
       <div className="card-head">
-        <div className="chip"><span>Score</span> <b>{fmt(currentScore)}</b></div>
+        <div className="chip" data-high-score={currentScore > bestScore && bestScore > 0}>
+          <span>Score</span> <b>{fmt(currentScore)}</b>
+        </div>
         <a className="chip ghost" href="/leaderboard">Leaderboard</a>
         <div className="chip"><span>Best</span> <b>{fmt(bestScore)}</b></div>
       </div>
@@ -221,7 +224,7 @@ export default function GameBoard({ player }: { player: string }) {
         </select>
         <span><b>Time:</b> {(duration / 1000).toFixed(1)}s</span>
         <span><b>Best Time:</b> {bestTime ? `${bestTime.toFixed(1)}s` : '—'}</span>
-        <span><b>Status:</b> {state}</span>
+        <span><b>Status:</b> <span className={`status-${state}`}>{state}</span></span>
       </div>
 
       {/* Board */}
@@ -238,6 +241,7 @@ export default function GameBoard({ player }: { player: string }) {
                 return (
                   <div key={k}
                     className={`cell ${isRevealed ? 'revealed' : isFlag ? 'flag' : 'hidden'}`}
+                    data-number={isRevealed && n > 0 ? n : undefined}
                     onClick={() => onReveal(r, c)}
                     onContextMenu={(e) => onRightClick(e, r, c)}
                   >
