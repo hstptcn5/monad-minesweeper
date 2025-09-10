@@ -1,8 +1,7 @@
 // app/api/check-new-data/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { getCachedLeaderboard, mergeNewData } from '@/lib/leaderboard-cache'
-import { readLeaderboard } from '@/lib/monad'
-import { TransactionLog } from '@/lib/parse-tx-logs'
+import { getGameLeaderboard } from '@/lib/monad'
 
 // Game address của Minesweeper game
 const MINESWEEPER_GAME_ADDRESS = '0x7d5aaba426231c649142330421acbb2a8a37b65e'
@@ -17,7 +16,7 @@ export async function POST(request: NextRequest) {
     
     // Lấy dữ liệu mới từ blockchain (chỉ lấy gần đây)
     console.log('🔍 Fetching recent blockchain data...')
-    const recentBlockchainData = await readLeaderboard()
+    const recentBlockchainData = await getGameLeaderboard(MINESWEEPER_GAME_ADDRESS, 100)
     
     if (recentBlockchainData.length === 0) {
       console.log('⚠️ No blockchain data found')
@@ -33,9 +32,9 @@ export async function POST(request: NextRequest) {
     // So sánh với cache hiện tại
     const currentWallets = new Set(currentCache.data.map(entry => entry.wallet))
     const newTransactions = recentBlockchainData.filter(entry => 
-      !currentWallets.has((entry as any).wallet || entry.player) || 
+      !currentWallets.has(entry.wallet) || 
       currentCache.data.find(cached => 
-        cached.wallet === ((entry as any).wallet || entry.player) && 
+        cached.wallet === entry.wallet && 
         cached.score !== entry.score
       )
     )
@@ -53,23 +52,8 @@ export async function POST(request: NextRequest) {
     
     console.log(`🆕 Found ${newTransactions.length} new/updated transactions`)
     
-    // Convert to TransactionLog format for mergeNewData
-    const transactionLogs: TransactionLog[] = newTransactions.map(entry => ({
-      blockNumber: 0, // Will be filled by mergeNewData
-      timestamp: Date.now(),
-      hash: '',
-      from: '',
-      to: '',
-      gameAddress: MINESWEEPER_GAME_ADDRESS,
-      playerAddress: (entry as any).wallet || entry.player,
-      score: entry.score,
-      transactionCount: (entry as any).transactions || (entry as any).games || 1,
-      gasUsed: '0',
-      gasPrice: '0'
-    }))
-    
     // Merge dữ liệu mới
-    const updatedCache = await mergeNewData(transactionLogs)
+    const updatedCache = await mergeNewData(newTransactions)
     
     return NextResponse.json({
       success: true,

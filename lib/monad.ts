@@ -420,19 +420,16 @@ export async function getGameLeaderboardFromBlockchain(gameAddress: string, limi
       try {
         const chunkEvents = await publicClient.getLogs({
           address: CONTRACT,
-          event: {
-            type: 'event',
-            name: 'PlayerDataUpdated',
-            inputs: [
-              { name: 'game', type: 'address', indexed: true },
-              { name: 'player', type: 'address', indexed: true },
-              { name: 'scoreAmount', type: 'uint256', indexed: true },
-              { name: 'transactionAmount', type: 'uint256', indexed: false }
-            ]
-          },
-          args: {
-            game: gameAddress as `0x${string}`
-          },
+          topics: [
+            // Event signature: PlayerDataUpdated(address,address,uint256,uint256)
+            '0x7abd9d7967b45f7d1688e628d9f0149582c393b39aee236839ee1543e59af8ef',
+            // Game address (indexed parameter 1)
+            gameAddress as `0x${string}`,
+            // Player address (indexed parameter 2) - null để lấy tất cả
+            null,
+            // Score amount (indexed parameter 3) - null để lấy tất cả
+            null
+          ],
           fromBlock,
           toBlock
         })
@@ -467,13 +464,27 @@ export async function getGameLeaderboardFromBlockchain(gameAddress: string, limi
     const playerData = new Map<string, { maxScore: number, totalGames: number, latestScore: number }>()
     
     events.forEach(event => {
-      // Parse event data từ decoded event
-      if (event.args) {
-        const player = event.args.player as string
-        const scoreAmount = Number(event.args.scoreAmount)
-        const transactionAmount = Number(event.args.transactionAmount)
+      // Parse event data từ topics và data
+      const topics = event.topics
+      if (topics.length >= 4) {
+        // Remove padding zeros từ address
+        let player = topics[2] as string // Player address ở topic[2]
+        const originalPlayer = player
+        if (player.startsWith('0x000000000000000000000000')) {
+          player = '0x' + player.slice(26) // Remove 24 zeros + '0x'
+          console.log('Address transformation:', originalPlayer, '->', player)
+        }
+        const scoreAmount = Number(topics[3]) // Score amount ở topic[3]
         
-        // transactionAmount đã được decode từ event.args
+        // Parse transactionAmount từ data (non-indexed parameter)
+        let transactionAmount = 1 // Default
+        if (event.data && event.data !== '0x') {
+          // Data là hex string, decode thành uint256
+          const dataHex = event.data.slice(2) // Remove 0x
+          if (dataHex.length >= 64) {
+            transactionAmount = parseInt(dataHex.slice(0, 64), 16)
+          }
+        }
         
         console.log('Parsed event:', { player, scoreAmount, transactionAmount })
         
