@@ -11,21 +11,36 @@ interface LeaderboardEntry {
   games: number
 }
 
+interface LeaderboardResponse {
+  success: boolean
+  data: LeaderboardEntry[]
+  total: number
+  game: string
+  source: string
+  gameAddress?: string
+  lastUpdated?: string
+  error?: string
+}
+
 export default function LeaderboardPage() {
   const [data, setData] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [metric, setMetric] = useState<'scores' | 'games'>('scores')
+  const [source, setSource] = useState<string>('')
+  const [lastUpdated, setLastUpdated] = useState<string>('')
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true)
         const response = await fetch('/api/leaderboard/minesweeper')
-        const result = await response.json()
+        const result: LeaderboardResponse = await response.json()
         
         if (result.success) {
           setData(result.data)
+          setSource(result.source || 'unknown')
+          setLastUpdated(result.lastUpdated || '')
         } else {
           setError(result.error || 'Failed to fetch leaderboard')
         }
@@ -173,7 +188,17 @@ export default function LeaderboardPage() {
                       {index > 2 && '#'}
                       {entry.rank}
                     </td>
-                    <td style={{ padding: '16px', fontWeight: '500' }}>{entry.player}</td>
+                    <td style={{ padding: '16px', fontWeight: '500' }}>
+                      {entry.player.startsWith('0x') ? (
+                        <span style={{ fontFamily: 'monospace', fontSize: '14px' }}>
+                          {entry.player}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#6366f1', fontWeight: '600' }}>
+                          @{entry.player}
+                        </span>
+                      )}
+                    </td>
                     <td style={{ padding: '16px', fontFamily: 'monospace', fontSize: '14px', color: '#6b7280' }}>
                       {entry.wallet}
                     </td>
@@ -221,10 +246,19 @@ export default function LeaderboardPage() {
         </Link>
       </div>
 
-      <p style={{ opacity: 0.7, marginTop: 16, fontSize: 13, textAlign: 'center' }}>
-        * Dữ liệu được lấy trực tiếp từ smart contract. Khi bạn chơi và submit score on-chain,
-        bảng xếp hạng sẽ tự động cập nhật.
-      </p>
+      <div style={{ opacity: 0.7, marginTop: 16, fontSize: 13, textAlign: 'center' }}>
+        <p>
+          * Dữ liệu được lấy từ <strong>{source === 'csv-data' ? 'CSV (từ khi tạo game)' : source === 'game-events' ? 'blockchain events' : source === 'explorer-api' ? 'Explorer API' : 'mock data'}</strong>
+        </p>
+        {lastUpdated && (
+          <p style={{ marginTop: 4 }}>
+            Cập nhật lần cuối: {new Date(lastUpdated).toLocaleString('vi-VN')}
+          </p>
+        )}
+        <p style={{ marginTop: 8 }}>
+          Khi bạn chơi và submit score on-chain, bảng xếp hạng sẽ tự động cập nhật.
+        </p>
+      </div>
     </div>
   )
 }

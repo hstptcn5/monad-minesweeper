@@ -1,0 +1,89 @@
+{
+  "data": [
+    {
+      "rank": 1,
+      "player": "kharluaan",
+      "wallet": "0x883f680ba3bf311981475c80d1ccfc8103a5f4ed",
+      "score": 800,
+      "maxScore": 800,
+      "games": 5,
+      "latestTimestamp": 1756521106
+    },
+    {
+      "rank": 2,
+      "player": "0xe319...c351",
+      "wallet": "0xe319bc6d74a212306b3eccf9ea3308b88425c351",
+      "score": 800,
+      "maxScore": 800,
+      "games": 1,
+      "latestTimestamp": 1756804015
+    },
+    {
+      "rank": 3,
+      "player": "james",
+      "wallet": "0xedec594f8a31c98207c4b0f0bdadbaaadce4dd08",
+      "score": 619,
+      "maxScore": 667,
+      "games": 9,
+      "latestTimestamp": 1756808106
+    },
+    {
+      "rank": 4,
+      "player": "phugiau",
+      "wallet": "0xc0d6c1196c8c2188adb108c72db5fd70e07b8745",
+      "score": 581,
+      "maxScore": 800,
+      "games": 15,
+      "latestTimestamp": 1757300194
+    },
+    {
+      "rank": 5,
+      "player": "hstptcn5",
+      "wallet": "0xc87e109a282b55af2fdd1e6ae4903a0d7e873764",
+      "score": 573,
+      "maxScore": 800,
+      "games": 4,
+      "latestTimestamp": 1756540325
+    },
+    {
+      "rank": 6,
+      "player": "emberion",
+      "wallet": "0x7011a82048a3bcca32afdac9fc0eae0625833f52",
+      "score": 541,
+      "maxScore": 800,
+      "games": 6,
+      "latestTimestamp": 1756513331
+    },
+    {
+      "rank": 7,
+      "player": "0xa317...9c6f",
+      "wallet": "0xa31733ebe72720504d259038692c93cc98719c6f",
+      "score": 509,
+      "maxScore": 800,
+      "games": 2,
+      "latestTimestamp": 1756509749
+    },
+    {
+      "rank": 8,
+      "player": "vickytor",
+      "wallet": "0xd8f29b32fc85480a63f74f9ad36cded5e0c78445",
+      "score": 438,
+      "maxScore": 438,
+      "games": 1,
+      "latestTimestamp": 1756600122
+    },
+    {
+      "rank": 9,
+      "player": "tonythanh",
+      "wallet": "0x2d64414af96e85818cbfb1c9cc7325c26c7e7dbc",
+      "score": 299,
+      "maxScore": 299,
+      "games": 1,
+      "latestTimestamp": 1756545688
+    }
+  ],
+  "total": 9,
+  "lastUpdated": "2025-09-10T01:56:55.823Z",
+  "csvHash": "1757466458145-13528",
+  "source": "csv-cache"
+}

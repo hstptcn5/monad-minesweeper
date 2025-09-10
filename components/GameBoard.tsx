@@ -38,6 +38,23 @@ export default function GameBoard({ player }: { player: string }) {
   const refreshLeaderboard = useCallback(async () => {
     try {
       console.log('🔄 Auto-refreshing leaderboard...')
+      
+      // Check for new data first
+      try {
+        const checkResponse = await fetch('/api/check-new-data', { method: 'POST' })
+        const checkResult = await checkResponse.json()
+        
+        if (checkResult.success && checkResult.hasNewData) {
+          console.log(`✅ Found ${checkResult.newTransactions} new transactions`)
+          console.log(`📊 Leaderboard updated: ${checkResult.currentTotal} → ${checkResult.newTotal}`)
+        } else {
+          console.log('✅ No new data found, using cached data')
+        }
+      } catch (e) {
+        console.log('⚠️ Check new data failed, continuing with leaderboard refresh')
+      }
+      
+      // Sau đó refresh leaderboard
       const response = await fetch('/api/leaderboard/minesweeper')
       const result = await response.json()
       console.log('✅ Leaderboard refreshed:', result)

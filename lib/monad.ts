@@ -303,9 +303,92 @@ async function lookupUsername(wallet: string): Promise<string | null> {
 }
 
 /**
- * Lấy leaderboard từ PlayerDataUpdated events của game cụ thể
+ * Lấy leaderboard từ CSV data (từ khi tạo game đến nay)
  */
-export async function getGameLeaderboard(gameAddress: string, limit: number = 50) {
+export async function getGameLeaderboardFromCSV(gameAddress: string, limit: number = 50) {
+  try {
+    console.log('Fetching leaderboard from CSV data for game:', gameAddress)
+    
+    // Import functions từ parse-tx-logs
+    const { parseAllTransactionLogs, createLeaderboardFromLogs } = await import('./parse-tx-logs')
+    
+    // Đọc CSV file
+    const fs = await import('fs')
+    const path = await import('path')
+    const csvPath = path.join(process.cwd(), 'tx.csv')
+    
+    if (!fs.existsSync(csvPath)) {
+      console.log('CSV file not found, falling back to blockchain data')
+      return await getGameLeaderboardFromBlockchain(gameAddress, limit)
+    }
+    
+    const csvData = fs.readFileSync(csvPath, 'utf-8')
+    
+    // Parse tất cả transaction logs từ CSV
+    const logs = await parseAllTransactionLogs(csvData)
+    
+    // Filter theo game address (ví của bạn)
+    const gameLogs = logs.filter(log => 
+      log.gameAddress.toLowerCase() === gameAddress.toLowerCase()
+    )
+    
+    console.log(`Found ${gameLogs.length} transactions for game ${gameAddress}`)
+    
+    if (gameLogs.length === 0) {
+      console.log('No transactions found for this game, falling back to blockchain data')
+      return await getGameLeaderboardFromBlockchain(gameAddress, limit)
+    }
+    
+    // Tạo leaderboard từ logs
+    const leaderboard = createLeaderboardFromLogs(gameLogs)
+    
+    // Lookup usernames từ Monad Games ID
+    console.log('Looking up usernames from Monad Games ID...')
+    const leaderboardWithUsernames = []
+    
+    for (let i = 0; i < leaderboard.length; i++) {
+      const entry = leaderboard[i]
+      try {
+        console.log(`Looking up username ${i + 1}/${leaderboard.length} for wallet:`, entry.wallet)
+        const username = await lookupUsername(entry.wallet)
+        
+        if (username) {
+          console.log(`✅ Found username: ${username} for wallet: ${entry.wallet}`)
+        } else {
+          console.log(`❌ No username found for wallet: ${entry.wallet}`)
+        }
+        
+        leaderboardWithUsernames.push({
+          ...entry,
+          player: username || entry.player // Sử dụng username nếu có, không thì dùng wallet short
+        })
+        
+        // Thêm delay nhỏ để tránh rate limiting
+        if (i < leaderboard.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100)) // 100ms delay
+        }
+        
+      } catch (error) {
+        console.log('Error looking up username for', entry.wallet, error)
+        leaderboardWithUsernames.push(entry)
+      }
+    }
+    
+    console.log('Mapped CSV leaderboard with usernames:', leaderboardWithUsernames.length, 'entries')
+    
+    return leaderboardWithUsernames.slice(0, limit)
+    
+  } catch (e: any) {
+    console.error('Error reading CSV leaderboard:', e)
+    // Fallback to blockchain data
+    return await getGameLeaderboardFromBlockchain(gameAddress, limit)
+  }
+}
+
+/**
+ * Lấy leaderboard từ PlayerDataUpdated events của game cụ thể (fallback)
+ */
+export async function getGameLeaderboardFromBlockchain(gameAddress: string, limit: number = 50) {
   try {
     console.log('Fetching leaderboard from game events for:', gameAddress)
     console.log('Contract address:', CONTRACT)
@@ -527,10 +610,28 @@ export async function getContractLeaderboard(limit: number = 50) {
 }
 
 /**
- * Query leaderboard từ Monad Games ecosystem
- * Note: Hiện tại lấy tất cả games vì không thể filter theo game cụ thể từ server-side
+ * Query leaderboard từ CSV data (ưu tiên) hoặc blockchain (fallback)
  */
 export async function readLeaderboard(limit: number = 50, gameFilter?: string) {
+  // Nếu có gameFilter, ưu tiên sử dụng CSV data
+  if (gameFilter) {
+    try {
+      console.log('Using CSV data for game-specific leaderboard:', gameFilter)
+      return await getGameLeaderboardFromCSV(gameFilter, limit)
+    } catch (e) {
+      console.log('CSV data failed, falling back to blockchain data')
+    }
+  }
+  
+  // Fallback to ecosystem data
+  return await readEcosystemLeaderboard(limit, gameFilter)
+}
+
+/**
+ * Query leaderboard từ Monad Games ecosystem (fallback)
+ * Note: Hiện tại lấy tất cả games vì không thể filter theo game cụ thể từ server-side
+ */
+export async function readEcosystemLeaderboard(limit: number = 50, gameFilter?: string) {
   try {
     console.log('Fetching leaderboard from Monad Games ecosystem...', gameFilter ? `(requested filter: ${gameFilter})` : 'all games')
     

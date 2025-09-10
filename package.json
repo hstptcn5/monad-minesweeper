@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "register:game": "ts-node --esm scripts/register-game.ts"
+    "register:game": "ts-node --esm scripts/register-game.ts",
+    "parse:logs": "npx ts-node --project tsconfig.scripts.json scripts/parse-csv-logs.ts",
+    "create:cache": "npx ts-node --project tsconfig.scripts.json scripts/create-cache.ts",
+    "refresh:usernames": "npx ts-node --project tsconfig.scripts.json scripts/refresh-cache-with-usernames.ts",
+    "fix:addresses": "npx ts-node --project tsconfig.scripts.json scripts/fix-address-padding.ts"
   },
   "dependencies": {
     "@privy-io/react-auth": "^1.79.0",
