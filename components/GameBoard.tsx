@@ -34,6 +34,38 @@ export default function GameBoard({ player }: { player: string }) {
   // Last status (progress/finish)
   const [lastStatus, setLastStatus] = useState<{ when: string, msg: string } | null>(null)
 
+  // Mini leaderboard data
+  const [miniLeaderboard, setMiniLeaderboard] = useState<Array<{
+    rank: number;
+    player: string;
+    score: number;
+  }>>([])
+
+  // Fetch mini leaderboard data
+  const fetchMiniLeaderboard = useCallback(async () => {
+    try {
+      const response = await fetch('/api/leaderboard/minesweeper?sortBy=scores')
+      const result = await response.json()
+      
+      if (result.success && result.data) {
+        const topPlayers = result.data.slice(0, 3).map((entry: any, index: number) => ({
+          rank: index + 1,
+          player: entry.player || entry.username || `Player${index + 1}`,
+          score: entry.score || 0
+        }))
+        setMiniLeaderboard(topPlayers)
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch mini leaderboard:', error)
+      // Fallback to mock data
+      setMiniLeaderboard([
+        { rank: 1, player: 'Player1', score: 1234 },
+        { rank: 2, player: 'Player2', score: 1100 },
+        { rank: 3, player: 'Player3', score: 987 }
+      ])
+    }
+  }, [])
+
   // Auto-refresh leaderboard function
   const refreshLeaderboard = useCallback(async () => {
     try {
@@ -58,10 +90,13 @@ export default function GameBoard({ player }: { player: string }) {
       const response = await fetch('/api/leaderboard/minesweeper')
       const result = await response.json()
       console.log('✅ Leaderboard refreshed:', result)
+      
+      // Also refresh mini leaderboard
+      await fetchMiniLeaderboard()
     } catch (error) {
       console.error('❌ Error refreshing leaderboard:', error)
     }
-  }, [])
+  }, [fetchMiniLeaderboard])
 
   useEffect(() => {
     try {
@@ -117,12 +152,50 @@ export default function GameBoard({ player }: { player: string }) {
     setState('playing'); setStartedAt(Date.now()); setLastStatus(null); setCurrentScore(0)
   }, [player, difficulty])
 
+  // Handle difficulty change with auto-restart
+  const handleDifficultyChange = useCallback(async (newDifficulty: Difficulty) => {
+    setDifficulty(newDifficulty)
+    // Auto-restart game when difficulty changes
+    if (player && state !== 'idle') {
+      // Reset current game state
+      setGame(null)
+      setRevealed(new Set())
+      setFlags(new Set())
+      setMoves([])
+      setDuration(0)
+      setState('idle')
+      setStartedAt(0)
+      setLastStatus(null)
+      setCurrentScore(0)
+      
+      // Start new game with new difficulty
+      setTimeout(async () => {
+        const res = await fetch('/api/new-board', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ difficulty: newDifficulty, player }) 
+        })
+        const data = await res.json()
+        if (res.ok && !data?.error && typeof data.w === 'number' && typeof data.h === 'number' && typeof data.mines === 'number' && data.seed && data.boardId) {
+          setGame(data as StartResp)
+          setState('playing')
+          setStartedAt(Date.now())
+        }
+      }, 100) // Small delay to ensure state is reset
+    }
+  }, [player, state])
+
   // Tự động start game khi có player và chưa có game
   useEffect(() => {
     if (player && !game && state === 'idle') {
       start()
     }
   }, [player, game, state, start])
+
+  // Fetch mini leaderboard on mount
+  useEffect(() => {
+    fetchMiniLeaderboard()
+  }, [fetchMiniLeaderboard])
 
   function neighbors(r: number, c: number) {
     const acc: [number, number][] = []; if (!game) return acc
@@ -236,12 +309,15 @@ export default function GameBoard({ player }: { player: string }) {
   const gridCols = game ? `repeat(${game.w}, var(--cell))` : `repeat(9, var(--cell))`
 
   return (
-    <section
-      className="game-card"
-      data-diff={difficulty}
-      data-state={state}
-      style={{ ['--cols' as any]: String(game?.w ?? 9) }}
-    >
+    <div className="game-layout">
+
+      {/* Main Game Area */}
+      <section
+        className="game-card"
+        data-diff={difficulty}
+        data-state={state}
+        style={{ ['--cols' as any]: String(game?.w ?? 9) }}
+      >
       {/* Card header */}
       <div className="card-head">
         <div className="chip" data-high-score={currentScore > bestScore && bestScore > 0}>
@@ -259,7 +335,7 @@ export default function GameBoard({ player }: { player: string }) {
 
       {/* meta row */}
       <div className="meta">
-        <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as Difficulty)}>
+        <select value={difficulty} onChange={(e) => handleDifficultyChange(e.target.value as Difficulty)}>
           <option value="easy">Easy (9x9, 10 mines)</option>
           <option value="medium">Medium (16x16, 40 mines)</option>
           <option value="hard">Hard (30x16, 99 mines)</option>
@@ -284,10 +360,20 @@ export default function GameBoard({ player }: { player: string }) {
                   <div key={k}
                     className={`cell ${isRevealed ? 'revealed' : isFlag ? 'flag' : 'hidden'}`}
                     data-number={isRevealed && n > 0 ? n : undefined}
+                    data-mine={isRevealed && isMine ? 'true' : undefined}
                     onClick={() => onReveal(r, c)}
                     onContextMenu={(e) => onRightClick(e, r, c)}
                   >
-                    {isRevealed ? (isMine ? <span className="icon-bomb"></span> : (n > 0 ? n : '')) : (isFlag ? <span className="icon-flag"></span> : '')}
+                    {isRevealed ? (
+                      isMine ? (
+                        <span className="icon-bomb">
+                          <span className="fuse"></span>
+                          <span className="flame"></span>
+                        </span>
+                      ) : (n > 0 ? n : '')
+                    ) : (
+                      isFlag ? <span className="icon-flag"></span> : ''
+                    )}
                   </div>
                 )
               })
@@ -308,6 +394,57 @@ export default function GameBoard({ player }: { player: string }) {
       {lastStatus && <div className="last"><b>Last:</b> {lastStatus.msg} <span style={{ opacity: .6 }}>@{lastStatus.when}</span> &nbsp;|&nbsp;
         <a href="https://testnet.monadexplorer.com/address/0xceCBFF203C8B6044F52CE23D914A1bfD997541A4?tab=Contract" target="_blank" rel="noreferrer">Contract</a>
       </div>}
-    </section>
+      </section>
+
+      {/* Right Sidebar - Leaderboard & Social */}
+      <aside className="game-sidebar right">
+        <div className="sidebar-section">
+          <h3>Leaderboard</h3>
+          <div className="mini-leaderboard">
+            {miniLeaderboard.map((entry) => (
+              <div key={entry.rank} className="leaderboard-item">
+                <span className="rank">{entry.rank}</span>
+                <span className="player">{entry.player}</span>
+                <span className="score">{fmt(entry.score)}</span>
+              </div>
+            ))}
+            <div className="leaderboard-item current">
+              <span className="rank">—</span>
+              <span className="player">You</span>
+              <span className="score">{fmt(currentScore)}</span>
+            </div>
+          </div>
+          <a href="/leaderboard" className="btn btn-sm outline" onClick={refreshLeaderboard}>
+            View Full
+          </a>
+        </div>
+
+        <div className="sidebar-section">
+          <h3>Your Progress</h3>
+          <div className="progress-item">
+            <span className="progress-label">Current Rank</span>
+            <span className="progress-value">#42</span>
+          </div>
+          <div className="progress-item">
+            <span className="progress-label">Games Played</span>
+            <span className="progress-value">15</span>
+          </div>
+          <div className="progress-item">
+            <span className="progress-label">Win Rate</span>
+            <span className="progress-value">73%</span>
+          </div>
+        </div>
+
+        <div className="sidebar-section">
+          <h3>Social</h3>
+          <button className="btn btn-sm" onClick={() => navigator.share?.({ title: 'Monad Minesweeper', text: `I scored ${fmt(currentScore)} points!` })}>
+            Share Score
+          </button>
+          <button className="btn btn-sm outline">
+            Challenge
+          </button>
+        </div>
+      </aside>
+    </div>
   )
 }

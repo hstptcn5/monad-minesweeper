@@ -30,29 +30,29 @@ export default function LeaderboardPage() {
   const [source, setSource] = useState<string>('')
   const [lastUpdated, setLastUpdated] = useState<string>('')
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        const response = await fetch('/api/leaderboard/minesweeper')
-        const result: LeaderboardResponse = await response.json()
-        
-        if (result.success) {
-          setData(result.data)
-          setSource(result.source || 'unknown')
-          setLastUpdated(result.lastUpdated || '')
-        } else {
-          setError(result.error || 'Failed to fetch leaderboard')
-        }
-      } catch (err) {
-        setError('Network error')
-      } finally {
-        setLoading(false)
+  const fetchData = async (sortBy: 'scores' | 'transactions' = 'scores') => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/leaderboard/minesweeper?sortBy=${sortBy}`)
+      const result: LeaderboardResponse = await response.json()
+      
+      if (result.success) {
+        setData(result.data)
+        setSource(result.source || 'unknown')
+        setLastUpdated(result.lastUpdated || '')
+      } else {
+        setError(result.error || 'Failed to fetch leaderboard')
       }
+    } catch (err) {
+      setError('Network error')
+    } finally {
+      setLoading(false)
     }
+  }
 
-    fetchData()
-  }, [])
+  useEffect(() => {
+    fetchData(metric === 'scores' ? 'scores' : 'transactions')
+  }, [metric])
 
   const sortedData = [...data].sort((a, b) => {
     if (metric === 'scores') {
@@ -63,37 +63,20 @@ export default function LeaderboardPage() {
   })
 
   return (
-    <div className="container" style={{ maxWidth: 1000 }}>
+    <div className="leaderboard-container">
       {/* Header với nút Back to Game */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-        <h2 style={{ fontWeight: 900, margin: 0 }}>
+      <div className="leaderboard-header">
+        <h1 className="leaderboard-title">
           Minesweeper Leaderboard (on-chain)
-        </h2>
+        </h1>
         <Link 
           href="/"
+          className="pill"
           style={{
+            textDecoration: 'none',
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '8px',
-            padding: '8px 16px',
-            backgroundColor: '#6366f1',
-            color: 'white',
-            textDecoration: 'none',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            transition: 'all 0.2s ease',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#4f46e5'
-            e.currentTarget.style.transform = 'translateY(-1px)'
-            e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#6366f1'
-            e.currentTarget.style.transform = 'translateY(0)'
-            e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'
+            gap: '8px'
           }}
         >
           ← Back to Game
@@ -101,56 +84,23 @@ export default function LeaderboardPage() {
       </div>
 
       {/* Metric Toggle */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
-        <div style={{ 
-          display: 'flex', 
-          backgroundColor: '#f3f4f6', 
-          borderRadius: '12px', 
-          padding: '4px',
-          gap: '4px'
-        }}>
-          <button
-            onClick={() => setMetric('scores')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              border: 'none',
-              backgroundColor: metric === 'scores' ? '#6366f1' : 'transparent',
-              color: metric === 'scores' ? 'white' : '#6b7280',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            Scores
-          </button>
-          <button
-            onClick={() => setMetric('games')}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              border: 'none',
-              backgroundColor: metric === 'games' ? '#6366f1' : 'transparent',
-              color: metric === 'games' ? 'white' : '#6b7280',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            Games
-          </button>
-        </div>
+      <div className="leaderboard-tabs">
+        <button
+          onClick={() => setMetric('scores')}
+          className={`leaderboard-tab ${metric === 'scores' ? 'active' : ''}`}
+        >
+          Scores
+        </button>
+        <button
+          onClick={() => setMetric('games')}
+          className={`leaderboard-tab ${metric === 'games' ? 'active' : ''}`}
+        >
+          Games
+        </button>
       </div>
 
       {/* Leaderboard Table */}
-      <div
-        style={{
-          borderRadius: 16,
-          overflow: 'hidden',
-          boxShadow: '0 10px 30px rgba(0,0,0,.08)',
-          background: 'white',
-        }}
-      >
+      <div className="leaderboard-table">
         {loading ? (
           <div style={{ padding: '40px', textAlign: 'center' }}>
             <div style={{ fontSize: '18px', color: '#6b7280' }}>Loading leaderboard...</div>
@@ -161,49 +111,51 @@ export default function LeaderboardPage() {
           </div>
         ) : (
           <div style={{ overflow: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table>
               <thead>
-                <tr style={{ backgroundColor: '#f8fafc' }}>
-                  <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#374151' }}>Rank</th>
-                  <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#374151' }}>Player</th>
-                  <th style={{ padding: '16px', textAlign: 'left', fontWeight: '600', color: '#374151' }}>Wallet</th>
-                  <th style={{ padding: '16px', textAlign: 'right', fontWeight: '600', color: '#374151' }}>
+                <tr>
+                  <th>Rank</th>
+                  <th>Player</th>
+                  <th>Wallet</th>
+                  <th>
                     {metric === 'scores' ? 'Score' : 'Games'}
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {sortedData.map((entry, index) => (
-                  <tr 
-                    key={entry.rank} 
-                    style={{ 
-                      borderBottom: '1px solid #e5e7eb',
-                      backgroundColor: index < 3 ? '#fef3c7' : 'white'
-                    }}
-                  >
-                    <td style={{ padding: '16px', fontWeight: '600' }}>
-                      {index === 0 && '🥇'}
-                      {index === 1 && '🥈'}
-                      {index === 2 && '🥉'}
-                      {index > 2 && '#'}
-                      {entry.rank}
+                  <tr key={entry.rank}>
+                    <td>
+                      <div className={`leaderboard-rank rank-${index + 1}`}>
+                        {index === 0 && '🥇'}
+                        {index === 1 && '🥈'}
+                        {index === 2 && '🥉'}
+                        {index > 2 && '#'}
+                        {entry.rank}
+                      </div>
                     </td>
-                    <td style={{ padding: '16px', fontWeight: '500' }}>
-                      {entry.player.startsWith('0x') ? (
-                        <span style={{ fontFamily: 'monospace', fontSize: '14px' }}>
-                          {entry.player}
-                        </span>
-                      ) : (
-                        <span style={{ color: '#6366f1', fontWeight: '600' }}>
-                          @{entry.player}
-                        </span>
-                      )}
+                    <td>
+                      <div className="leaderboard-player">
+                        {entry.player.startsWith('0x') ? (
+                          <span style={{ fontFamily: 'monospace', fontSize: '14px' }}>
+                            {entry.player}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--chip)', fontWeight: '600' }}>
+                            @{entry.player}
+                          </span>
+                        )}
+                      </div>
                     </td>
-                    <td style={{ padding: '16px', fontFamily: 'monospace', fontSize: '14px', color: '#6b7280' }}>
-                      {entry.wallet}
+                    <td>
+                      <div className="leaderboard-wallet">
+                        {entry.wallet}
+                      </div>
                     </td>
-                    <td style={{ padding: '16px', textAlign: 'right', fontWeight: '600' }}>
-                      {metric === 'scores' ? entry.score.toLocaleString() : entry.games.toLocaleString()}
+                    <td>
+                      <div className="leaderboard-score">
+                        {metric === 'scores' ? entry.score.toLocaleString() : entry.games.toLocaleString()}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -214,32 +166,15 @@ export default function LeaderboardPage() {
       </div>
 
       {/* Footer với nút Back to Game */}
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
         <Link 
           href="/"
+          className="pill outline"
           style={{
+            textDecoration: 'none',
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '8px',
-            padding: '12px 24px',
-            backgroundColor: '#f3f4f6',
-            color: '#374151',
-            textDecoration: 'none',
-            borderRadius: '12px',
-            fontSize: '16px',
-            fontWeight: '600',
-            transition: 'all 0.2s ease',
-            border: '2px solid #e5e7eb'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#e5e7eb'
-            e.currentTarget.style.borderColor = '#d1d5db'
-            e.currentTarget.style.transform = 'translateY(-1px)'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#f3f4f6'
-            e.currentTarget.style.borderColor = '#e5e7eb'
-            e.currentTarget.style.transform = 'translateY(0)'
+            gap: '8px'
           }}
         >
           🎮 Back to Minesweeper Game

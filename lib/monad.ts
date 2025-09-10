@@ -51,12 +51,11 @@ function getPublicClient() {
 /**
  * Lấy leaderboard từ Monad Explorer API (thay vì RPC)
  */
-export async function getGameLeaderboardFromExplorerAPI(gameAddress: string, limit: number = 50) {
+export async function getGameLeaderboardFromMonadAPI(gameId: number = 231, limit: number = 50, sortBy: 'scores' | 'transactions' = 'scores') {
   try {
-    console.log('Fetching leaderboard from Monad Explorer API...')
+    console.log(`🔍 Fetching leaderboard from Monad Games API (sortBy: ${sortBy})...`)
     
-    // Query transactions từ game address qua Explorer API
-    const response = await fetch(`https://testnet.monadexplorer.com/api/v2/addresses/${gameAddress}/transactions?limit=100`, {
+    const response = await fetch(`https://monad-games-id-site.vercel.app/api/leaderboard?page=1&limit=${limit}&gameId=${gameId}&sortBy=${sortBy}&sortOrder=desc`, {
       cache: 'no-store'
     })
     
@@ -65,67 +64,33 @@ export async function getGameLeaderboardFromExplorerAPI(gameAddress: string, lim
     }
     
     const data = await response.json()
-    console.log('Explorer API response:', data)
+    console.log(`✅ Monad API returned ${data.data.length} players (sorted by ${sortBy})`)
     
-    // Filter transactions có method updatePlayerData
-    const updatePlayerDataTxs = data.items?.filter((tx: any) => 
-      tx.to?.toLowerCase() === '0xcecbff203c8b6044f52ce23d914a1bfd997541a4' &&
-      tx.method === 'updatePlayerData'
-    ) || []
+    // Convert Monad API format to our format
+    const leaderboardData = data.data.map((entry: any) => ({
+      rank: entry.rank,
+      player: entry.username || `${entry.walletAddress.slice(0, 6)}...${entry.walletAddress.slice(-4)}`,
+      wallet: entry.walletAddress,
+      score: entry.score || entry.highScore || 0, // Use actual game score
+      transactions: entry.transactionCount || 0
+    }))
     
-    console.log('UpdatePlayerData transactions found:', updatePlayerDataTxs.length)
-    
-    // Aggregate data by player
-    const playerData = new Map<string, { maxScore: number, totalGames: number, latestScore: number }>()
-    
-    updatePlayerDataTxs.forEach((tx: any) => {
-      const player = tx.from // Player address
-      // Parse score từ input data hoặc sử dụng default
-      const score = 100 // Default score - có thể parse từ input data nếu cần
-      const games = 1 // Default games count
-      
-      console.log('Processing transaction:', { player, score, games, hash: tx.hash })
-      
-      if (playerData.has(player)) {
-        const existing = playerData.get(player)!
-        playerData.set(player, {
-          maxScore: Math.max(existing.maxScore, score),
-          totalGames: existing.totalGames + games,
-          latestScore: score
-        })
-      } else {
-        playerData.set(player, {
-          maxScore: score,
-          totalGames: games,
-          latestScore: score
-        })
-      }
-    })
-    
-    // Convert to leaderboard format
-    const leaderboardData = Array.from(playerData.entries())
-      .map(([player, data], index) => ({
-        rank: index + 1,
-        player: `${player.slice(0, 6)}...${player.slice(-4)}`,
-        wallet: player,
-        score: data.latestScore,
-        transactions: data.totalGames
-      }))
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit)
-    
-    // Update ranks
-    leaderboardData.forEach((entry, index) => {
-      entry.rank = index + 1
-    })
-    
-    console.log('Mapped explorer leaderboard:', leaderboardData.length, 'entries')
-    
+    console.log(`✅ Processed ${leaderboardData.length} players from Monad API`)
     return leaderboardData
-  } catch (e: any) {
-    console.error('Error reading explorer leaderboard:', e)
+    
+  } catch (error) {
+    console.error('Error reading Monad API leaderboard:', error)
     return []
   }
+}
+
+// Convenience functions for specific sorting
+export async function getGameLeaderboardByScores(gameId: number = 231, limit: number = 50) {
+  return getGameLeaderboardFromMonadAPI(gameId, limit, 'scores')
+}
+
+export async function getGameLeaderboardByTransactions(gameId: number = 231, limit: number = 50) {
+  return getGameLeaderboardFromMonadAPI(gameId, limit, 'transactions')
 }
 
 /**
