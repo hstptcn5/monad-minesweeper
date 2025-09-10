@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       console.log('✅ Monad API data found:', monadData.length, 'entries')
       
       // Map Monad API data to LeaderboardEntry format
-      const leaderboardData: LeaderboardEntry[] = monadData.map(entry => ({
+      const leaderboardData: LeaderboardEntry[] = monadData.map((entry: any) => ({
         rank: entry.rank,
         player: entry.player, // Đã có username từ Monad API
         wallet: entry.wallet,
