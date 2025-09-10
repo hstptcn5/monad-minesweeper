@@ -420,16 +420,19 @@ export async function getGameLeaderboardFromBlockchain(gameAddress: string, limi
       try {
         const chunkEvents = await publicClient.getLogs({
           address: CONTRACT,
-          topics: [
-            // Event signature: PlayerDataUpdated(address,address,uint256,uint256)
-            '0x7abd9d7967b45f7d1688e628d9f0149582c393b39aee236839ee1543e59af8ef',
-            // Game address (indexed parameter 1)
-            gameAddress as `0x${string}`,
-            // Player address (indexed parameter 2) - null để lấy tất cả
-            null,
-            // Score amount (indexed parameter 3) - null để lấy tất cả
-            null
-          ],
+          event: {
+            type: 'event',
+            name: 'PlayerDataUpdated',
+            inputs: [
+              { name: 'game', type: 'address', indexed: true },
+              { name: 'player', type: 'address', indexed: true },
+              { name: 'scoreAmount', type: 'uint256', indexed: true },
+              { name: 'transactionAmount', type: 'uint256', indexed: false }
+            ]
+          },
+          args: {
+            game: gameAddress as `0x${string}`
+          },
           fromBlock,
           toBlock
         })
@@ -464,42 +467,34 @@ export async function getGameLeaderboardFromBlockchain(gameAddress: string, limi
     const playerData = new Map<string, { maxScore: number, totalGames: number, latestScore: number }>()
     
     events.forEach(event => {
-      // Parse event data từ topics và data
-      const topics = event.topics
-      if (topics.length >= 4) {
-        // Remove padding zeros từ address
-        let player = topics[2] as string // Player address ở topic[2]
-        const originalPlayer = player
-        if (player.startsWith('0x000000000000000000000000')) {
-          player = '0x' + player.slice(26) // Remove 24 zeros + '0x'
-          console.log('Address transformation:', originalPlayer, '->', player)
-        }
-        const scoreAmount = Number(topics[3]) // Score amount ở topic[3]
+      // Parse event data từ decoded args
+      if (event.args) {
+        const { game, player, scoreAmount, transactionAmount } = event.args
         
-        // Parse transactionAmount từ data (non-indexed parameter)
-        let transactionAmount = 1 // Default
-        if (event.data && event.data !== '0x') {
-          // Data là hex string, decode thành uint256
-          const dataHex = event.data.slice(2) // Remove 0x
-          if (dataHex.length >= 64) {
-            transactionAmount = parseInt(dataHex.slice(0, 64), 16)
-          }
+        // Remove padding zeros từ address nếu cần
+        let cleanPlayer = player
+        if (typeof cleanPlayer === 'string' && cleanPlayer.startsWith('0x000000000000000000000000')) {
+          cleanPlayer = '0x' + cleanPlayer.slice(26) // Remove 24 zeros + '0x'
+          console.log('Address transformation:', player, '->', cleanPlayer)
         }
         
-        console.log('Parsed event:', { player, scoreAmount, transactionAmount })
+        const score = Number(scoreAmount)
+        const games = Number(transactionAmount || 1)
         
-        if (playerData.has(player)) {
-          const existing = playerData.get(player)!
-          playerData.set(player, {
-            maxScore: Math.max(existing.maxScore, scoreAmount),
-            totalGames: existing.totalGames + transactionAmount,
-            latestScore: scoreAmount // Lấy score mới nhất
+        console.log('Parsed event:', { player: cleanPlayer, score, games })
+        
+        if (playerData.has(cleanPlayer)) {
+          const existing = playerData.get(cleanPlayer)!
+          playerData.set(cleanPlayer, {
+            maxScore: Math.max(existing.maxScore, score),
+            totalGames: existing.totalGames + games,
+            latestScore: score // Lấy score mới nhất
           })
         } else {
-          playerData.set(player, {
-            maxScore: scoreAmount,
-            totalGames: transactionAmount,
-            latestScore: scoreAmount
+          playerData.set(cleanPlayer, {
+            maxScore: score,
+            totalGames: games,
+            latestScore: score
           })
         }
       }
