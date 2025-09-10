@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCachedLeaderboard, refreshCache } from '@/lib/leaderboard-cache'
-import { getGameLeaderboard, getGameLeaderboardFromExplorerAPI } from '@/lib/monad'
+import { getGameLeaderboardFromBlockchain, getGameLeaderboardFromExplorerAPI } from '@/lib/monad'
 
 // Game address của Minesweeper game
 const MINESWEEPER_GAME_ADDRESS = '0x7d5aaba426231c649142330421acbb2a8a37b65e'
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     
     // Fallback: Lấy dữ liệu từ blockchain events
     console.log('⚠️ No CSV data, trying blockchain events...')
-    const gameData = await getGameLeaderboard(MINESWEEPER_GAME_ADDRESS, 50)
+    const gameData = await getGameLeaderboardFromBlockchain(MINESWEEPER_GAME_ADDRESS, 50)
     
     if (gameData.length > 0) {
       console.log('✅ Game events data found:', gameData.length, 'entries')
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
       // Map game data to LeaderboardEntry format
       const leaderboardData: LeaderboardEntry[] = gameData.map(entry => ({
         rank: entry.rank,
-        player: entry.username || entry.player, // Hiển thị username nếu có, fallback về địa chỉ ngắn
+        player: entry.player, // Đã có username hoặc wallet short
         wallet: entry.wallet,
         score: entry.score,
         games: entry.transactions // Sử dụng transactions làm games count
@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
       // Map explorer data to LeaderboardEntry format
       const leaderboardData: LeaderboardEntry[] = explorerData.map(entry => ({
         rank: entry.rank,
-        player: entry.username || entry.player, // Hiển thị username nếu có, fallback về địa chỉ ngắn
+        player: entry.player, // Đã có username hoặc wallet short
         wallet: entry.wallet,
         score: entry.score,
         games: entry.transactions // Sử dụng transactions làm games count

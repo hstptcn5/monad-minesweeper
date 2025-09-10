@@ -1,7 +1,7 @@
 // app/api/check-new-data/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { getCachedLeaderboard, mergeNewData } from '@/lib/leaderboard-cache'
-import { getGameLeaderboard } from '@/lib/monad'
+import { getGameLeaderboardFromBlockchain } from '@/lib/monad'
 
 // Game address của Minesweeper game
 const MINESWEEPER_GAME_ADDRESS = '0x7d5aaba426231c649142330421acbb2a8a37b65e'
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     
     // Lấy dữ liệu mới từ blockchain (chỉ lấy gần đây)
     console.log('🔍 Fetching recent blockchain data...')
-    const recentBlockchainData = await getGameLeaderboard(MINESWEEPER_GAME_ADDRESS, 100)
+    const recentBlockchainData = await getGameLeaderboardFromBlockchain(MINESWEEPER_GAME_ADDRESS, 100)
     
     if (recentBlockchainData.length === 0) {
       console.log('⚠️ No blockchain data found')
